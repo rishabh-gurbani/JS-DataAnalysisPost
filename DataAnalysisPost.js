@@ -32,8 +32,16 @@ const findMaxFrequency = (data) =>{
         if (frequencies[entry]) frequencies[entry] += 1
         else frequencies[entry] = 1
     })
-    const max = [...Object.entries(frequencies)].reduce((acc, curr) =>
-        acc[1] > curr[1] ? acc : curr , [null, 0])[0]
+    const max = [...Object.entries(frequencies)]
+        .reduce((acc, curr) => {
+            return curr[1] > acc[1]
+                ? curr
+                : curr[1] < acc[1]
+                    ? acc
+                    : curr[0] > acc[0]
+                        ? curr
+                        : acc;
+        })[0];
     return max
 }
 
