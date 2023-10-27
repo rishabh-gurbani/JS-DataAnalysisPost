@@ -6,7 +6,7 @@ const getResponse = async (email, retries = 3) => {
             console.log("Request successful")
             const headers = response.headers
             const data = await response.json()
-            return [headers.get('x-assignment-id'), data]
+            return ['success', headers.get('x-assignment-id'), data]
         } else {
             console.log('Request failed', response.status);
             if (response.status === 500){
@@ -19,30 +19,35 @@ const getResponse = async (email, retries = 3) => {
                     console.log("Request successful")
                     return response
                 }
+            }else{
+                console.log(response.status)
+                return ['failed', null, null]
             }
         }
     } catch (e){
         console.log(e)
+        return ['failed', null, null]
     }
 }
 
-const findMaxFrequency = (data) =>{
-    const frequencies = {};
+const findMaxFrequencyWords = (data) =>{
+    const frequencies = new Map()
+    let maxCount = 0
+
     data.forEach(entry => {
-        if (frequencies[entry]) frequencies[entry] += 1
-        else frequencies[entry] = 1
+        const entryData = frequencies.get(entry)
+        if (entryData) frequencies.set(entry, entryData+1)
+        else frequencies.set(entry, 1)
+        maxCount = maxCount > frequencies.get(entry)
+            ? maxCount
+            : frequencies.get(entry)
     })
-    const max = [...Object.entries(frequencies)]
-        .reduce((acc, curr) => {
-            return curr[1] > acc[1]
-                ? curr
-                : curr[1] < acc[1]
-                    ? acc
-                    : curr[0] > acc[0]
-                        ? curr
-                        : acc;
-        })[0];
-    return max
+
+    const maxCountWords = [...frequencies]
+        .filter(([key, value]) => value === maxCount)
+        .map((key, value) => key)
+
+    return maxCountWords
 }
 
 
@@ -60,9 +65,9 @@ const postResponse = async (email, [assignmentID, maxWord]) => {
                     answer: maxWord,
                 }),
             })
-        console.log("Submitted: ")
+        console.log("Submitted: "+maxWord)
         const data = await response.json()
-        console.log(data)
+        return data
     } catch (e){
         console.log(e)
     }
@@ -70,9 +75,15 @@ const postResponse = async (email, [assignmentID, maxWord]) => {
 
 
 const main = async (email) => {
-    const [assignmentID, data] = await getResponse(email)
-    const maxWord = findMaxFrequency(data)
-    await postResponse (email,[assignmentID, maxWord])
+    const [status, assignmentID, data] = await getResponse(email)
+    if (status==='failed') return
+    const maxWords = findMaxFrequencyWords(data)
+    for(const [word, freq] of maxWords){
+        const submissionResponse =
+            await postResponse (email,[assignmentID, word])
+        console.log(submissionResponse)
+        if(await submissionResponse === 'submitted_correct') break
+    }
 }
 
 main('rishabh.gurbani23@gmail.com')
